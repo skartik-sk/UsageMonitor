@@ -165,6 +165,13 @@ struct MenuBarContentView: View {
                         .font(.caption)
                 }
 
+                Button {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                        .font(.caption)
+                }
+
                 Spacer()
 
                 Button("Quit") {
