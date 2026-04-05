@@ -1,0 +1,12 @@
+# Xcode / Swift Build Artifacts
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Outputs & Scripts
+*.dmg
+build_release.sh
+docs/
+

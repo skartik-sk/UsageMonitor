@@ -1,43 +1,83 @@
 // Sources/GLMUsageMonitor/Models/UsageData.swift
 import Foundation
 
-// MARK: - Generic API Response
+// MARK: - API Response Wrapper
 
 struct APIResponse<T: Decodable>: Decodable {
+    let code: Int
+    let msg: String
     let data: T
+    let success: Bool
 }
 
 // MARK: - Quota Limit
 
 struct QuotaLimitData: Decodable {
     let limits: [QuotaLimit]
+    let level: String
 }
 
 struct QuotaLimit: Decodable {
-    let type: String
+    let type: String       // "TIME_LIMIT" or "TOKENS_LIMIT"
+    let unit: Int
+    let number: Int?
+    let usage: Int?
+    let currentValue: Int?
+    let remaining: Int?
     let percentage: Double
-    var currentValue: Int?
-    var usage: String?
-    var usageDetails: String?
+    let nextResetTime: Int64?
+    let usageDetails: [UsageDetail]?
+}
+
+struct UsageDetail: Decodable {
+    let modelCode: String
+    let usage: Int
 }
 
 // MARK: - Model Usage
 
-struct ModelUsage: Decodable {
-    let model: String
-    let inputTokens: Int
-    let outputTokens: Int
+struct ModelUsageData: Decodable {
+    let xTime: [String]?
+    let modelCallCount: [Int?]?
+    let tokensUsage: [Int?]?
+    let totalUsage: ModelTotalUsage
 
-    var totalTokens: Int {
-        inputTokens + outputTokens
+    enum CodingKeys: String, CodingKey {
+        case xTime = "x_time"
+        case modelCallCount
+        case tokensUsage
+        case totalUsage
     }
+}
+
+struct ModelTotalUsage: Decodable {
+    let totalModelCallCount: Int
+    let totalTokensUsage: Int
 }
 
 // MARK: - Tool Usage
 
-struct ToolUsage: Decodable {
-    let tool: String
-    let count: Int
+struct ToolUsageData: Decodable {
+    let xTime: [String]?
+    let totalUsage: ToolTotalUsage
+
+    enum CodingKeys: String, CodingKey {
+        case xTime = "x_time"
+        case totalUsage
+    }
+}
+
+struct ToolTotalUsage: Decodable {
+    let totalNetworkSearchCount: Int
+    let totalWebReadMcpCount: Int
+    let totalZreadMcpCount: Int
+    let totalSearchMcpCount: Int
+    let toolDetails: [ToolDetail]
+}
+
+struct ToolDetail: Decodable {
+    let modelName: String
+    let totalUsageCount: Int
 }
 
 // MARK: - Time Window
@@ -49,14 +89,16 @@ struct UsageTimeWindow {
     static var now: UsageTimeWindow {
         let calendar = Calendar.current
         let date = Date()
-
         let currentHour = calendar.component(.hour, from: date)
 
-        var startComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: date) else {
+            return UsageTimeWindow(start: date, end: date)
+        }
+
+        var startComponents = calendar.dateComponents([.year, .month, .day], from: yesterday)
         startComponents.hour = currentHour
         startComponents.minute = 0
         startComponents.second = 0
-        startComponents.day = (startComponents.day ?? 1) - 1
 
         var endComponents = calendar.dateComponents([.year, .month, .day], from: date)
         endComponents.hour = currentHour

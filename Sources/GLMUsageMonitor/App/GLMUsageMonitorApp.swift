@@ -9,7 +9,7 @@ struct GLMUsageMonitorApp: App {
         MenuBarExtra {
             MenuBarContentView(viewModel: viewModel)
                 .onAppear {
-                    if viewModel.tokenPercentage == nil && !viewModel.isLoading {
+                    if viewModel.isMonitoring && viewModel.tokenPercentage == nil && !viewModel.isLoading {
                         viewModel.startPolling()
                     }
                 }
