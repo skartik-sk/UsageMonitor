@@ -3,8 +3,23 @@ import SwiftUI
 
 struct MenuBarContentView: View {
     let viewModel: UsageViewModel
+    @State private var showSettings = false
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if showSettings {
+                settingsContent
+            } else {
+                usageContent
+            }
+        }
+        .padding(16)
+        .frame(width: 300)
+    }
+
+    // MARK: - Usage Content
+
+    private var usageContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerSection
 
@@ -32,8 +47,92 @@ struct MenuBarContentView: View {
 
             footerSection
         }
-        .padding(16)
-        .frame(width: 300)
+    }
+
+    // MARK: - Settings Content
+
+    private var settingsContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button {
+                    showSettings = false
+                } label: {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.caption)
+                }
+                Spacer()
+                Text("Settings")
+                    .font(.headline)
+                Spacer()
+                // Balance the back button
+                Label("Back", systemImage: "chevron.left")
+                    .font(.caption)
+                    .opacity(0)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Auth Token")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                SecureField("Enter your auth token", text: Binding(
+                    get: { viewModel.authToken },
+                    set: { newValue in
+                        viewModel.authToken = newValue
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .font(.caption)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Base URL")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("https://api.z.ai/api/anthropic", text: Binding(
+                    get: { viewModel.baseURL },
+                    set: { newValue in
+                        viewModel.baseURL = newValue
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .font(.caption)
+            }
+
+            HStack {
+                Text("Refresh every")
+                    .font(.caption)
+                Spacer()
+                Stepper(
+                    "\(viewModel.pollIntervalMinutes) min",
+                    value: Binding(
+                        get: { viewModel.pollIntervalMinutes },
+                        set: { newValue in
+                            viewModel.pollIntervalMinutes = newValue
+                        }
+                    ),
+                    in: 1...60
+                )
+                .font(.caption)
+            }
+
+            Divider()
+
+            Button {
+                viewModel.restartPolling()
+                showSettings = false
+            } label: {
+                HStack {
+                    Spacer()
+                    Text("Save & Refresh")
+                        .font(.caption.bold())
+                    Spacer()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
     }
 
     // MARK: - Header
@@ -161,12 +260,12 @@ struct MenuBarContentView: View {
                 Button {
                     Task { await viewModel.fetchData() }
                 } label: {
-                    Label("Refresh Now", systemImage: "arrow.clockwise")
+                    Label("Refresh", systemImage: "arrow.clockwise")
                         .font(.caption)
                 }
 
                 Button {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    showSettings = true
                 } label: {
                     Label("Settings", systemImage: "gearshape")
                         .font(.caption)
