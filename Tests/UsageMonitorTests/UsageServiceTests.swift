@@ -1,6 +1,6 @@
-// Tests/GLMUsageMonitorTests/UsageServiceTests.swift
+// Tests/UsageMonitorTests/UsageServiceTests.swift
 import Testing
-@testable import GLMUsageMonitor
+@testable import UsageMonitor
 
 @Suite("UsageService")
 struct UsageServiceTests {

@@ -1,5 +1,6 @@
-// Sources/GLMUsageMonitor/Views/MenuBarContentView.swift
+// Sources/UsageMonitor/Views/MenuBarContentView.swift
 import SwiftUI
+import AppKit
 
 struct MenuBarContentView: View {
     let viewModel: UsageViewModel
@@ -7,31 +8,20 @@ struct MenuBarContentView: View {
 
     var body: some View {
         ZStack {
-            // Background Liquid Glass Effect
             Rectangle()
                 .fill(.ultraThinMaterial)
                 .ignoresSafeArea()
 
-            // Vibrant Liquid Ambient Gradients for macOS aesthetic
-            GeometryReader { geo in
-                Circle()
-                    .fill(Color.purple.opacity(0.25))
-                    .frame(width: geo.size.width * 0.8, height: geo.size.width * 0.8)
-                    .blur(radius: 40)
-                    .offset(x: -geo.size.width * 0.2, y: -geo.size.height * 0.2)
-
-                Circle()
-                    .fill(Color.blue.opacity(0.25))
-                    .frame(width: geo.size.width * 0.9, height: geo.size.width * 0.9)
-                    .blur(radius: 50)
-                    .offset(x: geo.size.width * 0.4, y: geo.size.height * 0.3)
-
-                Circle()
-                    .fill(Color.cyan.opacity(0.2))
-                    .frame(width: geo.size.width * 0.6, height: geo.size.width * 0.6)
-                    .blur(radius: 30)
-                    .offset(x: geo.size.width * 0.1, y: geo.size.height * 0.6)
-            }
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.22),
+                    Color.accentColor.opacity(0.08),
+                    Color.black.opacity(0.08)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 16) {
                 if showSettings {
@@ -52,7 +42,11 @@ struct MenuBarContentView: View {
         }
         .frame(width: 370)
         .background(.ultraThinMaterial)
-        .background(Color.white.opacity(0.1).blur(radius: 10)) // Additional diffusion
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.24), lineWidth: 1)
+        )
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: showSettings)
     }
 
@@ -81,13 +75,13 @@ struct MenuBarContentView: View {
                     }
                 }
 
-                if !viewModel.usageDetails.isEmpty || viewModel.totalModelCalls > 0 {
+                if !viewModel.usageDetails.isEmpty || viewModel.totalModelCalls > 0 || viewModel.totalTokensUsage > 0 {
                     glassPanel {
                         VStack(spacing: 12) {
                             if !viewModel.usageDetails.isEmpty {
                                 modelBreakdownSection
                             }
-                            if viewModel.totalModelCalls > 0 {
+                            if viewModel.totalModelCalls > 0 || viewModel.totalTokensUsage > 0 {
                                 if !viewModel.usageDetails.isEmpty { Divider().opacity(0.5) }
                                 totalsSection
                             }
@@ -127,51 +121,25 @@ struct MenuBarContentView: View {
 
             glassPanel {
                 VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Auth Token")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        SecureField("Enter your auth token", text: Binding(
-                            get: { viewModel.authToken },
-                            set: { newValue in
-                                viewModel.authToken = newValue
-                            }
-                        ))
-                        .textFieldStyle(.roundedBorder)
-                        .controlSize(.small)
+                    Picker("Provider", selection: Binding(
+                        get: { viewModel.usageProvider },
+                        set: { newValue in
+                            viewModel.usageProvider = newValue
+                        }
+                    )) {
+                        ForEach(UsageProvider.allCases) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if viewModel.usageProvider == .codex {
+                        codexSettingsFields
+                    } else {
+                        glmSettingsFields
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Base URL")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("https://api.z.ai/api/anthropic", text: Binding(
-                            get: { viewModel.baseURL },
-                            set: { newValue in
-                                viewModel.baseURL = newValue
-                            }
-                        ))
-                        .textFieldStyle(.roundedBorder)
-                        .controlSize(.small)
-                    }
-
-                    HStack {
-                        Text("Refresh every")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Stepper(
-                            "\(viewModel.pollIntervalMinutes) min",
-                            value: Binding(
-                                get: { viewModel.pollIntervalMinutes },
-                                set: { newValue in
-                                    viewModel.pollIntervalMinutes = newValue
-                                }
-                            ),
-                            in: 1...60
-                        )
-                        .font(.caption)
-                    }
+                    pollingField
                 }
             }
 
@@ -195,6 +163,122 @@ struct MenuBarContentView: View {
         }
     }
 
+    private var codexSettingsFields: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("ChatGPT Auth Headers")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                SecureField("Cookie header", text: Binding(
+                    get: { viewModel.codexCookie },
+                    set: { newValue in
+                        viewModel.codexCookie = newValue
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                Text("Paste copied cURL, request headers, or cookie export. Cookie and Authorization headers are extracted automatically.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Analytics URL")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("https://chatgpt.com/codex/cloud/settings/analytics", text: Binding(
+                    get: { viewModel.codexAnalyticsURL },
+                    set: { newValue in
+                        viewModel.codexAnalyticsURL = newValue
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+            }
+
+            Button {
+                if let url = URL(string: viewModel.codexAnalyticsURL) {
+                    NSWorkspace.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "safari")
+                    Text("Open ChatGPT")
+                }
+                .font(.caption.weight(.medium))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+
+            Button {
+                if let cookieText = NSPasteboard.general.string(forType: .string) {
+                    viewModel.codexCookie = cookieText
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.on.clipboard")
+                    Text("Paste Headers")
+                }
+                .font(.caption.weight(.medium))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var glmSettingsFields: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Auth Token")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                SecureField("Enter your auth token", text: Binding(
+                    get: { viewModel.authToken },
+                    set: { newValue in
+                        viewModel.authToken = newValue
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Base URL")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("https://api.z.ai/api/anthropic", text: Binding(
+                    get: { viewModel.baseURL },
+                    set: { newValue in
+                        viewModel.baseURL = newValue
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+            }
+        }
+    }
+
+    private var pollingField: some View {
+        HStack {
+            Text("Refresh every")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Stepper(
+                "\(viewModel.pollIntervalMinutes) min",
+                value: Binding(
+                    get: { viewModel.pollIntervalMinutes },
+                    set: { newValue in
+                        viewModel.pollIntervalMinutes = newValue
+                    }
+                ),
+                in: 1...60
+            )
+            .font(.caption)
+        }
+    }
+
     // MARK: - Header with Custom Glass Toggle
 
     private var headerSection: some View {
@@ -210,7 +294,7 @@ struct MenuBarContentView: View {
                         .foregroundStyle(viewModel.isMonitoring ? .green : .secondary)
                 }
 
-                Text("GLM Usage")
+                Text(viewModel.usageProvider.title)
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(.primary)
             }
@@ -257,7 +341,7 @@ struct MenuBarContentView: View {
     private var tokenSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Token Usage (5 Hour)")
+                    Text(viewModel.usageProvider == .codex ? "5h Usage" : "Token Usage (\(viewModel.usageWindowLabel))")
                     .font(.subheadline.weight(.medium))
                 Spacer()
                 if let pct = viewModel.tokenPercentage {
@@ -268,6 +352,9 @@ struct MenuBarContentView: View {
             }
             if let pct = viewModel.tokenPercentage {
                 progressBar(pct: pct)
+                if viewModel.usageProvider == .codex, let reset = viewModel.fiveHourResetLabel {
+                    resetText(reset)
+                }
             } else {
                 ProgressView().frame(height: 8)
             }
@@ -309,6 +396,9 @@ struct MenuBarContentView: View {
                     .foregroundStyle(colorForPercentage(pct))
             }
             progressBar(pct: pct)
+            if viewModel.usageProvider == .codex, let reset = viewModel.weeklyResetLabel {
+                resetText(reset)
+            }
         }
     }
 
@@ -317,7 +407,7 @@ struct MenuBarContentView: View {
     private func weeklyUsageSection(_ pct: Double) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Weekly Limit")
+                Text(viewModel.usageProvider == .codex ? "Weekly Usage" : "Weekly Limit")
                     .font(.subheadline.weight(.medium))
                 Spacer()
                 Text(String(format: "%.1f%%", pct))
@@ -332,7 +422,7 @@ struct MenuBarContentView: View {
 
     private var modelBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Model Breakdown")
+            Text(viewModel.usageProvider == .codex ? "Limit Details" : "Model Breakdown")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -342,7 +432,7 @@ struct MenuBarContentView: View {
                         .font(.caption2)
                         .lineLimit(1)
                     Spacer()
-                    Text("\(detail.usage) calls")
+                    Text(viewModel.usageProvider == .codex ? "\(detail.usage)% used" : "\(detail.usage) calls")
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -354,20 +444,23 @@ struct MenuBarContentView: View {
 
     private var totalsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Session Totals (24h)")
+            Text(viewModel.usageProvider == .codex ? "Account" : "Session Totals (\(viewModel.usageWindowLabel))")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            HStack {
-                Text("Model Calls")
-                    .font(.caption)
-                Spacer()
-                Text("\(viewModel.totalModelCalls)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+            if viewModel.usageProvider == .glm || viewModel.totalModelCalls > 0 {
+                HStack {
+                    Text(viewModel.usageProvider == .codex ? "Tasks" : "Model Calls")
+                        .font(.caption)
+                    Spacer()
+                    Text("\(viewModel.totalModelCalls)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
             }
+
             HStack {
-                Text("Tokens Used")
+                Text(viewModel.usageProvider == .codex ? "Credits Balance" : "Tokens Used")
                     .font(.caption)
                 Spacer()
                 Text(formatTokens(viewModel.totalTokensUsage))
@@ -387,6 +480,12 @@ struct MenuBarContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func resetText(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
     }
 
     // MARK: - Footer
@@ -430,21 +529,21 @@ struct MenuBarContentView: View {
         .padding(.top, 4)
     }
 
-    // MARK: - Liquid Glass Panel Extrusion
+    // MARK: - Liquid Glass Panel
 
     @ViewBuilder
     private func glassPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(16)
+            .padding(14)
             .background(
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(.ultraThinMaterial)
 
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [.white.opacity(0.35), .white.opacity(0.0)],
+                                colors: [.white.opacity(0.28), .white.opacity(0.04)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -452,19 +551,19 @@ struct MenuBarContentView: View {
                         .blendMode(.overlay)
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(
                         LinearGradient(
-                            colors: [.white.opacity(0.5), .white.opacity(0.1), .white.opacity(0.2)],
+                            colors: [.white.opacity(0.46), .white.opacity(0.12)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
                         lineWidth: 1
                     )
             )
-            .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+            .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 8)
     }
 
     // MARK: - Helpers

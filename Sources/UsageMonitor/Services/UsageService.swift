@@ -1,4 +1,4 @@
-// Sources/GLMUsageMonitor/Services/UsageService.swift
+// Sources/UsageMonitor/Services/UsageService.swift
 import Foundation
 
 actor UsageService {
@@ -48,8 +48,7 @@ actor UsageService {
         return result
     }
 
-    func fetchModelUsage() async throws -> ModelUsageData {
-        let window = UsageTimeWindow.now
+    func fetchModelUsage(window: UsageTimeWindow = .now) async throws -> ModelUsageData {
         let urlString = "\(modelUsageURL.absoluteString)?startTime=\(window.startString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&endTime=\(window.endString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)"
         let url = URL(string: urlString)!
         NSLog("[GLM] Fetching model usage: \(urlString)")
@@ -58,8 +57,7 @@ actor UsageService {
         return result
     }
 
-    func fetchToolUsage() async throws -> ToolUsageData {
-        let window = UsageTimeWindow.now
+    func fetchToolUsage(window: UsageTimeWindow = .now) async throws -> ToolUsageData {
         let urlString = "\(toolUsageURL.absoluteString)?startTime=\(window.startString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)&endTime=\(window.endString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)"
         let url = URL(string: urlString)!
         NSLog("[GLM] Fetching tool usage: \(urlString)")

@@ -7,6 +7,9 @@
 
 # Outputs & Scripts
 *.dmg
-build_release.sh
-docs/
 
+# Local secrets / copied browser auth
+cookies.txt
+cookies*.txt
+*.cookie
+*.cookies

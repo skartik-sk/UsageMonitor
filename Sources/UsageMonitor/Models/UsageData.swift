@@ -1,5 +1,28 @@
-// Sources/GLMUsageMonitor/Models/UsageData.swift
+// Sources/UsageMonitor/Models/UsageData.swift
 import Foundation
+
+// MARK: - Provider
+
+enum UsageProvider: String, CaseIterable, Identifiable {
+    case codex
+    case glm
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .codex: "Codex"
+        case .glm: "GLM"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .codex: "Usage Monitor"
+        case .glm: "Usage Monitor"
+        }
+    }
+}
 
 // MARK: - API Response Wrapper
 
@@ -32,6 +55,13 @@ struct QuotaLimit: Decodable {
 struct UsageDetail: Decodable {
     let modelCode: String
     let usage: Int
+}
+
+extension UsageDetail {
+    init(label: String, percent: Double) {
+        self.modelCode = label
+        self.usage = Int(percent.rounded())
+    }
 }
 
 // MARK: - Model Usage
@@ -85,29 +115,24 @@ struct ToolDetail: Decodable {
 struct UsageTimeWindow {
     let start: Date
     let end: Date
+    let label: String
 
     static var now: UsageTimeWindow {
-        let calendar = Calendar.current
-        let date = Date()
-        let currentHour = calendar.component(.hour, from: date)
+        .lastHours(5)
+    }
 
-        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: date) else {
-            return UsageTimeWindow(start: date, end: date)
+    static func lastHours(_ hours: Int, relativeTo now: Date = Date()) -> UsageTimeWindow {
+        let calendar = Calendar.current
+        let end = now
+
+        guard let start = calendar.date(byAdding: .hour, value: -hours, to: end) else {
+            return UsageTimeWindow(start: now, end: now, label: "\(hours)h")
         }
 
-        var startComponents = calendar.dateComponents([.year, .month, .day], from: yesterday)
-        startComponents.hour = currentHour
-        startComponents.minute = 0
-        startComponents.second = 0
-
-        var endComponents = calendar.dateComponents([.year, .month, .day], from: date)
-        endComponents.hour = currentHour
-        endComponents.minute = 59
-        endComponents.second = 59
-
         return UsageTimeWindow(
-            start: calendar.date(from: startComponents)!,
-            end: calendar.date(from: endComponents)!
+            start: start,
+            end: end,
+            label: "\(hours)h"
         )
     }
 
@@ -119,4 +144,17 @@ struct UsageTimeWindow {
 
     var startString: String { Self.formatter.string(from: start) }
     var endString: String { Self.formatter.string(from: end) }
+}
+
+// MARK: - Codex Analytics
+
+struct CodexUsageData {
+    let fiveHourRemainingPercentage: Double?
+    let weeklyRemainingPercentage: Double?
+    let fiveHourResetLabel: String?
+    let weeklyResetLabel: String?
+    let planName: String?
+    let totalTasks: Int?
+    let creditsUsed: Int?
+    let details: [UsageDetail]
 }

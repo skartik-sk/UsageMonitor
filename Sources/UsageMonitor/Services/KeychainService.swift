@@ -1,25 +1,51 @@
-// Sources/GLMUsageMonitor/Services/KeychainService.swift
+// Sources/UsageMonitor/Services/KeychainService.swift
 import Foundation
 import Security
 
 enum KeychainService {
-    private static let service = "com.glm-usage-monitor"
+    private static let service = "com.usage.monitor"
+    private static let authTokenAccount = "auth-token"
+    private static let codexCookieAccount = "codex-cookie"
 
     static func save(token: String) throws {
-        let data = Data(token.utf8)
+        try save(value: token, account: authTokenAccount)
+    }
+
+    static func load() -> String? {
+        load(account: authTokenAccount)
+    }
+
+    static func delete() {
+        delete(account: authTokenAccount)
+    }
+
+    static func saveCodexCookie(_ cookie: String) throws {
+        try save(value: cookie, account: codexCookieAccount)
+    }
+
+    static func loadCodexCookie() -> String? {
+        load(account: codexCookieAccount)
+    }
+
+    static func deleteCodexCookie() {
+        delete(account: codexCookieAccount)
+    }
+
+    private static func save(value: String, account: String) throws {
+        let data = Data(value.utf8)
 
         // Delete any existing token first
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "auth-token",
+            kSecAttrAccount as String: account,
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "auth-token",
+            kSecAttrAccount as String: account,
             kSecValueData as String: data,
         ]
 
@@ -29,11 +55,11 @@ enum KeychainService {
         }
     }
 
-    static func load() -> String? {
+    private static func load(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "auth-token",
+            kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -47,11 +73,11 @@ enum KeychainService {
         return String(data: data, encoding: .utf8)
     }
 
-    static func delete() {
+    private static func delete(account: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "auth-token",
+            kSecAttrAccount as String: account,
         ]
         SecItemDelete(query as CFDictionary)
     }

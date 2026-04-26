@@ -2,16 +2,16 @@
 import PackageDescription
 
 let package = Package(
-    name: "GLMUsageMonitor",
+    name: "UsageMonitor",
     platforms: [.macOS(.v26)],
     targets: [
         .executableTarget(
-            name: "GLMUsageMonitor",
-            path: "Sources/GLMUsageMonitor"
+            name: "UsageMonitor",
+            path: "Sources/UsageMonitor"
         ),
         .testTarget(
-            name: "GLMUsageMonitorTests",
-            dependencies: ["GLMUsageMonitor"]
+            name: "UsageMonitorTests",
+            dependencies: ["UsageMonitor"]
         )
     ]
 )

@@ -1,8 +1,8 @@
-// Sources/GLMUsageMonitor/App/GLMUsageMonitorApp.swift
+// Sources/UsageMonitor/App/UsageMonitorApp.swift
 import SwiftUI
 
 @main
-struct GLMUsageMonitorApp: App {
+struct UsageMonitorApp: App {
     @State private var viewModel = UsageViewModel()
 
     var body: some Scene {
